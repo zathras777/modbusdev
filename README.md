@@ -1,4 +1,4 @@
-# modbusdev
+# modbusdev [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT) [![GoDoc](https://godoc.org/github.com/goburrow/modbus?status.svg)](https://godoc.org/github.com/zathras777/modbusdev)
 
 This package grew from a desire to have a simplified way of accessing the various registers on modebus devices I have presently. The aim was to build on top of the [modbus](https://github.com/goburrow/modbus) package rather than try to replace it.
 
@@ -40,7 +40,7 @@ func main() {
 }
 ```
 
-This data was recorded after dark :-)
+This sample output was done after dark :-)
 
 ```
   30001: Grid Voltage                                     0.00 V
@@ -68,6 +68,6 @@ I don't have many devices :-)
 
 ## Bugs & Improvements
 
-Always happy to have bugs found. Even happier to have pull requests submitted :-) 
+Always happy to have bugs found. Even happier to have pull requests submitted :-)
 
 If it's useful to you and you want additional devices added, submit the pull request and I'll merge them in.
