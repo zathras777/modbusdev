@@ -16,20 +16,20 @@ func (r Register) registersRqd() uint16 {
 	case "u32", "s32", "ieee32":
 		return 2
 	}
-	return 0
+	return 2
 }
 
 func (r Register) applyFactor(val *Value) {
 	switch r.format {
 	case "u16":
-		val.ieee32 = r.factor * float64(val.unsigned16)
+		val.Ieee32 = r.factor * float64(val.Unsigned16)
 	case "s16":
-		val.ieee32 = r.factor * float64(val.signed16)
+		val.Ieee32 = r.factor * float64(val.Signed16)
 	case "u32":
-		val.ieee32 = r.factor * float64(val.unsigned32)
+		val.Ieee32 = r.factor * float64(val.Unsigned32)
 	case "s32":
-		val.ieee32 = r.factor * float64(val.signed32)
+		val.Ieee32 = r.factor * float64(val.Signed32)
 	case "ieee32":
-		val.ieee32 = r.factor * val.ieee32
+		val.Ieee32 = r.factor * val.Ieee32
 	}
 }
