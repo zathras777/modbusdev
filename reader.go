@@ -23,12 +23,12 @@ type Reader struct {
 // Value As there are a number of possible return values, we simply
 // return this structure with the appropriate member set.
 type Value struct {
-	unsigned16 uint16
-	signed16   int16
-	unsigned32 uint32
-	signed32   int32
-	coil       bool
-	ieee32     float64
+	Unsigned16 uint16
+	Signed16   int16
+	Unsigned32 uint32
+	Signed32   int32
+	Coil       bool
+	Ieee32     float64
 }
 
 // NewReader Return a configured Reader with the correct register mappings.
@@ -54,8 +54,15 @@ func (rdr *Reader) ReadRegister(code int, factored bool) (val Value, err error) 
 	}
 	var results []byte
 	nRqd := reg.registersRqd()
-	if code > 29999 && code < 39999 {
+
+	var typ int
+	for typ = code; typ >= 10; typ = typ / 10 {
+	}
+	switch typ {
+	case 3:
 		results, err = rdr.client.ReadInputRegisters(reg.register, nRqd)
+	case 4:
+		results, err = rdr.client.ReadHoldingRegisters(reg.register, nRqd)
 	}
 
 	if err != nil {
@@ -63,17 +70,17 @@ func (rdr *Reader) ReadRegister(code int, factored bool) (val Value, err error) 
 	}
 	switch reg.format {
 	case "u16":
-		val.unsigned16 = unsigned16(results)
+		val.Unsigned16 = unsigned16(results)
 	case "s16":
-		val.signed16 = signed16(results)
+		val.Signed16 = signed16(results)
 	case "u32":
-		val.unsigned32 = unsigned32(results)
+		val.Unsigned32 = unsigned32(results)
 	case "s32":
-		val.signed32 = signed32(results)
+		val.Signed32 = signed32(results)
 	case "ieee32":
-		val.ieee32 = ieee32(results)
+		val.Ieee32 = ieee32(results)
 	case "coil":
-		val.coil = bool16(results)
+		val.Coil = bool16(results)
 	}
 	if factored {
 		reg.applyFactor(&val)
@@ -88,6 +95,25 @@ func (rdr *Reader) Units(code int) string {
 		return ""
 	}
 	return reg.units
+}
+
+// Map Return a map object of the registers. If getting a register returns a value it is
+// simply omitted from the map.
+func (rdr *Reader) Map(factored bool) map[int]Value {
+	mapValues := make(map[int]Value)
+	var keys []int
+	for k := range rdr.registers {
+		keys = append(keys, k)
+	}
+
+	for _, code := range keys {
+		val, err := rdr.ReadRegister(code, factored)
+		if err != nil {
+			continue
+		}
+		mapValues[code] = val
+	}
+	return mapValues
 }
 
 // Dump Query all defined registers and print the results to stdout.
@@ -107,23 +133,23 @@ func (rdr *Reader) Dump(factored bool) {
 		}
 
 		if factored {
-			fmt.Printf(baseFmt+ieeeFmt+" %s\n", code, reg.description, val.ieee32, reg.units)
+			fmt.Printf(baseFmt+ieeeFmt+" %s\n", code, reg.description, val.Ieee32, reg.units)
 			continue
 		}
 
 		switch reg.format {
 		case "u16":
-			fmt.Printf(baseFmt+numFmt+" %s\n", code, reg.description, val.unsigned16, reg.units)
+			fmt.Printf(baseFmt+numFmt+" %s\n", code, reg.description, val.Unsigned16, reg.units)
 		case "s16":
-			fmt.Printf(baseFmt+numFmt+"%s\n", code, reg.description, val.signed16, reg.units)
+			fmt.Printf(baseFmt+numFmt+"%s\n", code, reg.description, val.Signed16, reg.units)
 		case "u32":
-			fmt.Printf(baseFmt+numFmt+"%s\n", code, reg.description, val.unsigned32, reg.units)
+			fmt.Printf(baseFmt+numFmt+"%s\n", code, reg.description, val.Unsigned32, reg.units)
 		case "s32":
-			fmt.Printf(baseFmt+numFmt+"%s\n", code, reg.description, val.signed32, reg.units)
+			fmt.Printf(baseFmt+numFmt+"%s\n", code, reg.description, val.Signed32, reg.units)
 		case "ieee32":
-			fmt.Printf(baseFmt+ieeeFmt+"%s\n", code, reg.description, val.ieee32, reg.units)
+			fmt.Printf(baseFmt+ieeeFmt+"%s\n", code, reg.description, val.Ieee32, reg.units)
 		case "coil":
-			fmt.Printf(baseFmt+"%t\n", code, reg.description, val.coil)
+			fmt.Printf(baseFmt+"%t\n", code, reg.description, val.Coil)
 		}
 	}
 }
