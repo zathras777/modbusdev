@@ -1,30 +1,45 @@
 package modbusdev
 
 var sdm230 = map[int]Register{
-	30001: Register{"Line to neutral volts", "V", 0x0000, "ieee32", 1},
-	30007: Register{"Current", "A", 0x0006, "ieee32", 1},
-	30013: Register{"Active Power", "W", 0x000C, "ieee32", 1},
-	30019: Register{"Apparent Power", "VA", 0x0012, "ieee32", 1},
-	30025: Register{"Reactive Power", "VAr", 0x0018, "ieee32", 1},
-	30031: Register{"Power Factor", "", 0x001E, "ieee32", 1},
-	30037: Register{"Phase Angle", "Degrees", 0x0024, "ieee32", 1},
-	30071: Register{"Frequency", "Hz", 0x0046, "ieee32", 1},
-	30073: Register{"Import Active Energy", "kWh", 0x0048, "ieee32", 1},
-	30075: Register{"Export Active Energy", "kWh", 0x004A, "ieee32", 1},
-	30077: Register{"Import Reactive Energy", "kVArh", 0x004C, "ieee32", 1},
-	30079: Register{"Export Reactive Energy", "kVArh", 0x004E, "ieee32", 1},
-	30085: Register{"Total system power demand", "W", 0x0054, "ieee32", 1},
-	30087: Register{"Maximum total system power demand", "W", 0x0056, "ieee32", 1},
-	30089: Register{"Current system positive power demand", "W", 0x0058, "ieee32", 1},
-	30091: Register{"Maximum system positive power demand", "W", 0x005A, "ieee32", 1},
-	30093: Register{"Current system reverse power demand", "W", 0x005C, "ieee32", 1},
-	30095: Register{"Maximum system reverse power demand", "W", 0x005E, "ieee32", 1},
-	30259: Register{"Current demand", "Amps", 0x0102, "ieee32", 1},
-	30265: Register{"Maximum current Demand", "A", 0x0108, "ieee32", 1},
-	30343: Register{"Total Active Energy", "kWh", 0x0156, "ieee32", 1},
-	30345: Register{"Total Reactive Energy", "kVArh", 0x0158, "ieee32", 1},
+	30001:  Register{"Line to neutral volts", "V", 0x0000, "ieee32", 1},
+	30007:  Register{"Current", "A", 0x0006, "ieee32", 1},
+	30013:  Register{"Active Power", "W", 0x000C, "ieee32", 1},
+	30019:  Register{"Apparent Power", "VA", 0x0012, "ieee32", 1},
+	30025:  Register{"Reactive Power", "VAr", 0x0018, "ieee32", 1},
+	30031:  Register{"Power Factor", "", 0x001E, "ieee32", 1},
+	30037:  Register{"Phase Angle", "Degrees", 0x0024, "ieee32", 1},
+	30071:  Register{"Frequency", "Hz", 0x0046, "ieee32", 1},
+	30073:  Register{"Import Active Energy", "kWh", 0x0048, "ieee32", 1},
+	30075:  Register{"Export Active Energy", "kWh", 0x004A, "ieee32", 1},
+	30077:  Register{"Import Reactive Energy", "kVArh", 0x004C, "ieee32", 1},
+	30079:  Register{"Export Reactive Energy", "kVArh", 0x004E, "ieee32", 1},
+	30085:  Register{"Total system power demand", "W", 0x0054, "ieee32", 1},
+	30087:  Register{"Maximum total system power demand", "W", 0x0056, "ieee32", 1},
+	30089:  Register{"Current system positive power demand", "W", 0x0058, "ieee32", 1},
+	30091:  Register{"Maximum system positive power demand", "W", 0x005A, "ieee32", 1},
+	30093:  Register{"Current system reverse power demand", "W", 0x005C, "ieee32", 1},
+	30095:  Register{"Maximum system reverse power demand", "W", 0x005E, "ieee32", 1},
+	30259:  Register{"Current demand", "Amps", 0x0102, "ieee32", 1},
+	30265:  Register{"Maximum current Demand", "A", 0x0108, "ieee32", 1},
+	30343:  Register{"Total Active Energy", "kWh", 0x0156, "ieee32", 1},
+	30345:  Register{"Total Reactive Energy", "kVArh", 0x0158, "ieee32", 1},
+	363792: Register{"Pulse Indicators", "", 0xf930, "u32", 1},
+
+	// Included as example in protocol document?
+	//	40001:  Register{"Demand Time", "ms", 0x0000, "ieee32", 1},
+	40013:  Register{"Relay Pulse Width", "ms", 0x000C, "ieee32", 1},
+	40019:  Register{"Network Parity Stop", "", 0x0012, "ieee32", 1},
+	40021:  Register{"Network Node", "", 0x0014, "ieee32", 1},
+	40029:  Register{"Network Baud Rate", "", 0x001c, "ieee32", 1},
+	462721: Register{"Screen Settings", "", 0xf500, "u32", 1},
+	463761: Register{"System Power", "", 0xf910, "u32", 1},
+	463776: Register{"Measurement Mode", "", 0xf91f, "u32", 1},
 }
 
+/*
+ * Solax register information from
+ * https://github.com/wills106/homeassistant-config/blob/43365e6eed685e82763f786e7a46c387083a93b5/packages/solax.yaml
+ */
 var solaxX1Hybrid = map[int]Register{
 	30001: Register{"Grid Voltage", "V", 0, "u16", 0.1},
 	30002: Register{"Grid Current", "A", 0x01, "s16", 0.1},
