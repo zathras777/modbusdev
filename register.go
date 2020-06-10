@@ -9,6 +9,12 @@ type Register struct {
 	factor      float64
 }
 
+type registerCache struct {
+	start        uint16
+	qty          uint16
+	registerData []byte
+}
+
 func (r Register) registersRqd() uint16 {
 	switch r.format {
 	case "u16", "s16", "coil":
@@ -17,6 +23,10 @@ func (r Register) registersRqd() uint16 {
 		return 2
 	}
 	return 2
+}
+
+func (r Register) maxRegister() uint16 {
+	return r.register + r.registersRqd()
 }
 
 func (r Register) applyFactor(val *Value) {
@@ -32,4 +42,24 @@ func (r Register) applyFactor(val *Value) {
 	case "ieee32":
 		val.Ieee32 = r.factor * val.Ieee32
 	}
+}
+
+func (rc *registerCache) init() {
+	rc.start = 65535
+}
+
+func (rc *registerCache) update(reg Register) {
+	if reg.register < rc.start {
+		rc.start = reg.register
+	}
+	if reg.maxRegister() > rc.start+rc.qty {
+		rc.qty = reg.maxRegister() - rc.start
+	}
+}
+
+func (rc *registerCache) getValue(reg Register) Value {
+	idx := (reg.register - rc.start) * 2
+	var val Value
+	val.formatBytes(reg.format, rc.registerData[idx:idx+reg.registersRqd()*2])
+	return val
 }

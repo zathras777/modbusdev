@@ -18,6 +18,8 @@ const (
 type Reader struct {
 	client    modbus.Client
 	registers map[int]Register
+	holding   registerCache
+	input     registerCache
 }
 
 // Not sure if there is a better way to do this, but it works for now.
@@ -48,11 +50,24 @@ func NewReader(client modbus.Client, device string) (rdr Reader, err error) {
 	default:
 		err = fmt.Errorf("Device '%s' is not known. Add the details and then update reader.go to include it", device)
 	}
+
+	rdr.input.start = 65535
+	rdr.holding.start = 65535
+
+	for code, reg := range rdr.registers {
+		switch getRegisterType(code) {
+		case 3:
+			rdr.input.update(reg)
+		case 4:
+			rdr.holding.update(reg)
+		}
+	}
+
 	return
 }
 
-// ReadRegister Read the register specified by the code. Valid values are normally returned from
-// Input registers, but try to read all.
+// ReadRegister Read the register specified by the code. This always causes the device to be
+// queried.
 func (rdr *Reader) ReadRegister(code int, factored bool) (val Value, err error) {
 	reg, ck := rdr.registers[code]
 	if !ck {
@@ -78,6 +93,46 @@ func (rdr *Reader) ReadRegister(code int, factored bool) (val Value, err error) 
 	return val, nil
 }
 
+func min(a, b uint16) uint16 {
+	if a > b {
+		return b
+	}
+	return a
+}
+
+// Read Read the registers that are required to provide data for the configured device. This
+// attempts a single call to the device.
+func (rdr *Reader) Read() error {
+	regsRead := uint16(0)
+	for {
+		toRead := min(125, rdr.input.qty-regsRead+1)
+		results, err := rdr.client.ReadInputRegisters(rdr.input.start+regsRead, toRead)
+		if err != nil {
+			return err
+		}
+		rdr.input.registerData = append(rdr.input.registerData, results...)
+		regsRead += toRead
+		if regsRead >= rdr.input.qty {
+			break
+		}
+	}
+
+	regsRead = 0
+	for {
+		toRead := min(125, rdr.holding.qty-regsRead+1)
+		results, err := rdr.client.ReadHoldingRegisters(rdr.holding.start+regsRead, toRead)
+		if err != nil {
+			return err
+		}
+		rdr.holding.registerData = append(rdr.holding.registerData, results...)
+		regsRead += toRead
+		if regsRead >= rdr.holding.qty {
+			break
+		}
+	}
+	return nil
+}
+
 // Units For the given register code, return the units specified
 func (rdr *Reader) Units(code int) string {
 	reg, ck := rdr.registers[code]
@@ -87,19 +142,41 @@ func (rdr *Reader) Units(code int) string {
 	return reg.units
 }
 
+// Get Return the data stored following a Read() call.
+func (rdr *Reader) Get(code int, factored bool) (rValue Value, err error) {
+	reg, ck := rdr.registers[code]
+	if !ck {
+		err = fmt.Errorf("Code %d was not registered", code)
+		return
+	}
+
+	switch getRegisterType(code) {
+	case 3:
+		rValue = rdr.input.getValue(reg)
+	case 4:
+		rValue = rdr.holding.getValue(reg)
+	}
+	if factored {
+		reg.applyFactor(&rValue)
+	}
+	return
+}
+
 // Map Return a map object of the registers. If getting a register returns a value it is
 // simply omitted from the map.
 func (rdr *Reader) Map(factored bool) map[int]Value {
 	mapValues := make(map[int]Value)
-	var keys []int
-	for k := range rdr.registers {
-		keys = append(keys, k)
+	if rdr.Read() != nil {
+		return mapValues
 	}
 
-	for _, code := range keys {
-		val, err := rdr.ReadRegister(code, factored)
-		if err != nil {
-			continue
+	for code, reg := range rdr.registers {
+		var val Value
+		switch getRegisterType(code) {
+		case 3:
+			val = rdr.input.getValue(reg)
+		case 4:
+			val = rdr.holding.getValue(reg)
 		}
 		mapValues[code] = val
 	}
@@ -108,6 +185,11 @@ func (rdr *Reader) Map(factored bool) map[int]Value {
 
 // Dump Query all defined registers and print the results to stdout.
 func (rdr *Reader) Dump(factored bool) {
+	if err := rdr.Read(); err != nil {
+		fmt.Printf("Unable to read register data from device.\n%s\n", err)
+		return
+	}
+
 	var keys []int
 	for k := range rdr.registers {
 		keys = append(keys, k)
@@ -116,13 +198,17 @@ func (rdr *Reader) Dump(factored bool) {
 
 	for _, code := range keys {
 		reg := rdr.registers[code]
-		val, err := rdr.ReadRegister(code, factored)
-		if err != nil {
-			fmt.Printf(baseFmt+"ERROR %s\n", code, reg.description, err)
-			continue
+
+		var val Value
+		switch getRegisterType(code) {
+		case 3:
+			val = rdr.input.getValue(reg)
+		case 4:
+			val = rdr.holding.getValue(reg)
 		}
 
 		if factored {
+			reg.applyFactor(&val)
 			fmt.Printf(baseFmt+ieeeFmt+" %s\n", code, reg.description, val.Ieee32, reg.units)
 			continue
 		}
