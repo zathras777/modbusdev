@@ -86,7 +86,7 @@ func (rdr *Reader) ReadRegister(code int, factored bool) (val Value, err error) 
 	if err != nil {
 		return val, err
 	}
-	val.formatBytes(reg.format, results)
+	val.FormatBytes(reg.format, results)
 	if factored {
 		reg.applyFactor(&val)
 	}

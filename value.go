@@ -15,7 +15,8 @@ type Value struct {
 	Ieee32     float64
 }
 
-func (val *Value) formatBytes(format string, value []byte) {
+// FormatBytes Given a format string and some bytes, attempt to correctly format them
+func (val *Value) FormatBytes(format string, value []byte) {
 	switch format {
 	case "u16":
 		val.Unsigned16 = unsigned16(value)

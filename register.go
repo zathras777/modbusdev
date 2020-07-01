@@ -60,6 +60,6 @@ func (rc *registerCache) update(reg Register) {
 func (rc *registerCache) getValue(reg Register) Value {
 	idx := (reg.register - rc.start) * 2
 	var val Value
-	val.formatBytes(reg.format, rc.registerData[idx:idx+reg.registersRqd()*2])
+	val.FormatBytes(reg.format, rc.registerData[idx:idx+reg.registersRqd()*2])
 	return val
 }
