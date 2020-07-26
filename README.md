@@ -66,6 +66,82 @@ I don't have many devices :-)
 - [Eastron SDM230-Modbus Power Meter](http://www.eastrongroup.com/productsview/72.html)
 - [Solax X1 Hybrid Inverter](https://www.solaxpower.com/single-phase-hybrid/)
 
+## Simple Database Access
+
+I've been using a PostgreSQL database, so have added a simple interface to allow for easier recording of data from Map() results across my projects that are using modbusdev.
+
+Given this example JSON configuration,
+```
+{
+    "database": {
+        "Host": "localhost",
+        "Port": 5432,
+        "User": "dbusername",
+        "Password": "dbuserpassword",
+        "Name": "modbusdatabase"
+        "Query": "INSERT INTO table (time%s) VALUES (NOW()%s)"
+        "fields": [
+            {"name": "pv1", "code": 30011},
+            {"name": "pv2", "code": 30012},
+            {"name": "inverter", "code": 30003},
+            ...
+        ]
+    },
+```
+
+The supplied query should have 2 string placeholders (%s) which will be replaced with the field names and suitable query markers for the database query.
+
+The first step is to import the configuration and decode the JSON.
+
+```
+...
+struct jsonConfig struct {
+    Database modbusdev.DatabaseConfig
+}
+
+func main() {
+    client := modbus.TCPClient("192.168.1.100:502")
+    solax, err := modbusdev.NewReader(client, "solaxx1hybrid")
+    if err != nil {
+        log.Fatal(err)
+    }
+
+	jsonCfg := jsonConfig{}
+	jsonFile, err := os.Open("config.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+	decoder := json.NewDecoder(jsonFile)
+	err = decoder.Decode(&jsonCfg)
+	jsonFile.Close()
+	if err != nil {
+		log.Fatal(err)
+	}
+```
+
+With the database configuration parsed, we set up a loop to constantly read the data and insert into the database as follows,
+
+```
+    err = jsonCfg.Database.OpenDatabase()
+    if err != nil {
+        log.Fatal(err)
+    }
+    defer jsonCfg.Database.Close()
+
+    for {
+        mapData := solax.Map(true)
+        if err := cfg.Database.Execute(mapData); err != nil {
+			log.Print(err)
+			break
+		}
+        time.Sleep(5 * time.Second)
+    }
+}
+
+```
+
+This is primarily written to simplify my home workflow so will likely not be useful for many folks!
+
 ## Bugs & Improvements
 
 Always happy to have bugs found. Even happier to have pull requests submitted :-)
