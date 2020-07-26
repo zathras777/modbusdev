@@ -2,6 +2,7 @@ package modbusdev
 
 import (
 	"fmt"
+	"log"
 	"sort"
 	"strings"
 
@@ -75,7 +76,7 @@ func (rdr *Reader) ReadRegister(code int, factored bool) (val Value, err error) 
 	}
 	var results []byte
 	nRqd := reg.registersRqd()
-
+	log.Printf("nRqd: %d", nRqd)
 	switch getRegisterType(code) {
 	case 3:
 		results, err = rdr.client.ReadInputRegisters(reg.register, nRqd)
@@ -104,30 +105,34 @@ func min(a, b uint16) uint16 {
 // attempts a single call to the device.
 func (rdr *Reader) Read() error {
 	regsRead := uint16(0)
-	for {
-		toRead := min(125, rdr.input.qty-regsRead+1)
-		results, err := rdr.client.ReadInputRegisters(rdr.input.start+regsRead, toRead)
-		if err != nil {
-			return err
-		}
-		rdr.input.registerData = append(rdr.input.registerData, results...)
-		regsRead += toRead
-		if regsRead >= rdr.input.qty {
-			break
+	if rdr.input.start != 65535 {
+		for {
+			toRead := min(125, rdr.input.qty-regsRead+1)
+			results, err := rdr.client.ReadInputRegisters(rdr.input.start+regsRead, toRead)
+			if err != nil {
+				return err
+			}
+			rdr.input.registerData = append(rdr.input.registerData, results...)
+			regsRead += toRead
+			if regsRead >= rdr.input.qty {
+				break
+			}
 		}
 	}
 
-	regsRead = 0
-	for {
-		toRead := min(125, rdr.holding.qty-regsRead+1)
-		results, err := rdr.client.ReadHoldingRegisters(rdr.holding.start+regsRead, toRead)
-		if err != nil {
-			return err
-		}
-		rdr.holding.registerData = append(rdr.holding.registerData, results...)
-		regsRead += toRead
-		if regsRead >= rdr.holding.qty {
-			break
+	if rdr.holding.start != 65535 {
+		regsRead = 0
+		for {
+			toRead := min(125, rdr.holding.qty-regsRead+1)
+			results, err := rdr.client.ReadHoldingRegisters(rdr.holding.start+regsRead, toRead)
+			if err != nil {
+				return err
+			}
+			rdr.holding.registerData = append(rdr.holding.registerData, results...)
+			regsRead += toRead
+			if regsRead >= rdr.holding.qty {
+				break
+			}
 		}
 	}
 	return nil
@@ -166,7 +171,8 @@ func (rdr *Reader) Get(code int, factored bool) (rValue Value, err error) {
 // simply omitted from the map.
 func (rdr *Reader) Map(factored bool) map[int]Value {
 	mapValues := make(map[int]Value)
-	if rdr.Read() != nil {
+	if err := rdr.Read(); err != nil {
+		log.Printf("Error reading values: %s", err)
 		return mapValues
 	}
 
@@ -177,6 +183,9 @@ func (rdr *Reader) Map(factored bool) map[int]Value {
 			val = rdr.input.getValue(reg)
 		case 4:
 			val = rdr.holding.getValue(reg)
+		}
+		if factored {
+			reg.applyFactor(&val)
 		}
 		mapValues[code] = val
 	}
