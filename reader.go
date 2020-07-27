@@ -52,8 +52,8 @@ func NewReader(client modbus.Client, device string) (rdr Reader, err error) {
 		err = fmt.Errorf("Device '%s' is not known. Add the details and then update reader.go to include it", device)
 	}
 
-	rdr.input.start = 65535
-	rdr.holding.start = 65535
+	rdr.input.init()
+	rdr.holding.init()
 
 	for code, reg := range rdr.registers {
 		switch getRegisterType(code) {
@@ -76,7 +76,6 @@ func (rdr *Reader) ReadRegister(code int, factored bool) (val Value, err error) 
 	}
 	var results []byte
 	nRqd := reg.registersRqd()
-	log.Printf("nRqd: %d", nRqd)
 	switch getRegisterType(code) {
 	case 3:
 		results, err = rdr.client.ReadInputRegisters(reg.register, nRqd)
@@ -105,6 +104,8 @@ func min(a, b uint16) uint16 {
 // attempts a single call to the device.
 func (rdr *Reader) Read() error {
 	regsRead := uint16(0)
+	totalRead := regsRead
+
 	if rdr.input.start != 65535 {
 		for {
 			toRead := min(125, rdr.input.qty-regsRead+1)
@@ -112,14 +113,15 @@ func (rdr *Reader) Read() error {
 			if err != nil {
 				return err
 			}
-			rdr.input.registerData = append(rdr.input.registerData, results...)
+
+			rdr.input.updateBytes(regsRead, results)
 			regsRead += toRead
 			if regsRead >= rdr.input.qty {
 				break
 			}
 		}
 	}
-
+	totalRead += regsRead
 	if rdr.holding.start != 65535 {
 		regsRead = 0
 		for {
@@ -128,12 +130,16 @@ func (rdr *Reader) Read() error {
 			if err != nil {
 				return err
 			}
-			rdr.holding.registerData = append(rdr.holding.registerData, results...)
+			rdr.holding.updateBytes(regsRead, results)
 			regsRead += toRead
 			if regsRead >= rdr.holding.qty {
 				break
 			}
 		}
+	}
+	totalRead += regsRead
+	if totalRead == 0 {
+		return fmt.Errorf("Read no data. Do you need to configure registers?")
 	}
 	return nil
 }
@@ -187,6 +193,7 @@ func (rdr *Reader) Map(factored bool) map[int]Value {
 		if factored {
 			reg.applyFactor(&val)
 		}
+		//		log.Printf("reg: %s => %f", reg.description, val.Ieee32)
 		mapValues[code] = val
 	}
 	return mapValues

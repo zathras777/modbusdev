@@ -12,7 +12,7 @@ type Register struct {
 type registerCache struct {
 	start        uint16
 	qty          uint16
-	registerData []byte
+	registerData map[int]byte
 }
 
 func (r Register) registersRqd() uint16 {
@@ -45,6 +45,7 @@ func (r Register) applyFactor(val *Value) {
 }
 
 func (rc *registerCache) init() {
+	rc.registerData = make(map[int]byte)
 	rc.start = 65535
 }
 
@@ -57,9 +58,21 @@ func (rc *registerCache) update(reg Register) {
 	}
 }
 
+func (rc *registerCache) updateBytes(offset uint16, newBytes []byte) {
+	idx := int(rc.start+offset) * 2
+	for i, bb := range newBytes {
+		rc.registerData[idx+i] = bb
+	}
+}
+
 func (rc *registerCache) getValue(reg Register) Value {
-	idx := (reg.register - rc.start) * 2
+	idx := int(reg.register-rc.start) * 2
+	sz := int(reg.registersRqd() * 2)
+	rawBytes := make([]byte, sz)
+	for i := 0; i < sz; i++ {
+		rawBytes[i] = rc.registerData[idx+i]
+	}
 	var val Value
-	val.FormatBytes(reg.format, rc.registerData[idx:idx+reg.registersRqd()*2])
+	val.FormatBytes(reg.format, rawBytes)
 	return val
 }
