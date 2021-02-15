@@ -44,15 +44,15 @@ func (wrt *Writer) WriteSimple(code, value int) error {
 	if !ck {
 		return fmt.Errorf("Register %d unknown", code)
 	}
-	switch reg.format {
+	switch reg.Format {
 	case "u16", "s16", "u32", "s32":
-		bytes, err := formatIntAsBytes(reg.format, value)
+		bytes, err := formatIntAsBytes(reg.Format, value)
 		if err != nil {
 			return err
 		}
 		return wrt.writeSingle(reg, bytes)
 	default:
-		return fmt.Errorf("Cannot convert int to %s", reg.format)
+		return fmt.Errorf("Cannot convert int to %s", reg.Format)
 	}
 }
 
@@ -62,7 +62,7 @@ func (wrt *Writer) WriteRegister(code int, val Value) error {
 	if !ck {
 		return fmt.Errorf("Register %d unknown", code)
 	}
-	return wrt.writeSingle(reg, val.asBytes(reg.format))
+	return wrt.writeSingle(reg, val.asBytes(reg.Format))
 }
 
 // WriteDirect Write the given values to the specified register
@@ -77,10 +77,10 @@ func (wrt *Writer) WriteDirect(address, value uint16) error {
 }
 
 func (wrt *Writer) writeSingle(reg Register, byts []byte) error {
-	switch reg.format {
+	switch reg.Format {
 	case "u16", "s16":
 		uval := uint16(byts[0])<<8 + uint16(byts[1])
-		rrr, err := wrt.client.WriteSingleRegister(reg.register, uval)
+		rrr, err := wrt.client.WriteSingleRegister(reg.Register, uval)
 		if err != nil {
 			return err
 		}

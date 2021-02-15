@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"sort"
-	"strings"
 
 	"github.com/goburrow/modbus"
 )
@@ -23,35 +22,15 @@ type Reader struct {
 	input     registerCache
 }
 
-// Not sure if there is a better way to do this, but it works for now.
-func joinMaps(aaa, bbb map[int]Register) map[int]Register {
-	regMap := make(map[int]Register)
-	for k, v := range aaa {
-		regMap[k] = v
-	}
-	for k, v := range bbb {
-		regMap[k] = v
-	}
-	return regMap
-}
-
 // NewReader Return a configured Reader with the correct register mappings.
 // Device names are converted to lower case for matching, so case provided is irrelevant.
 func NewReader(client modbus.Client, device string) (rdr Reader, err error) {
 	rdr.client = client
-	switch strings.ToLower(device) {
-	case "sdm230":
-		rdr.registers = sdm230
-	case "sdm230ex":
-		rdr.registers = joinMaps(sdm230, sdm230Ex)
-	case "solaxx1hybrid":
-		rdr.registers = solaxX1Hybrid
-	case "solaxx1hybridex":
-		rdr.registers = joinMaps(solaxX1Hybrid, solaxX1HybridEx)
-	default:
-		err = fmt.Errorf("Device '%s' is not known. Add the details and then update reader.go to include it", device)
+	regs, err := RegistersByName(device)
+	if err != nil {
+		return
 	}
-
+	rdr.registers = regs
 	rdr.input.init()
 	rdr.holding.init()
 
@@ -78,15 +57,15 @@ func (rdr *Reader) ReadRegister(code int, factored bool) (val Value, err error) 
 	nRqd := reg.registersRqd()
 	switch getRegisterType(code) {
 	case 3:
-		results, err = rdr.client.ReadInputRegisters(reg.register, nRqd)
+		results, err = rdr.client.ReadInputRegisters(reg.Register, nRqd)
 	case 4:
-		results, err = rdr.client.ReadHoldingRegisters(reg.register, nRqd)
+		results, err = rdr.client.ReadHoldingRegisters(reg.Register, nRqd)
 	}
 
 	if err != nil {
 		return val, err
 	}
-	val.FormatBytes(reg.format, results)
+	val.FormatBytes(reg.Format, results)
 	if factored {
 		reg.applyFactor(&val)
 	}
@@ -150,7 +129,7 @@ func (rdr *Reader) Units(code int) string {
 	if !ck {
 		return ""
 	}
-	return reg.units
+	return reg.Units
 }
 
 // Get Return the data stored following a Read() call.
@@ -225,23 +204,23 @@ func (rdr *Reader) Dump(factored bool) {
 
 		if factored {
 			reg.applyFactor(&val)
-			fmt.Printf(baseFmt+ieeeFmt+" %s\n", code, reg.description, val.Ieee32, reg.units)
+			fmt.Printf(baseFmt+ieeeFmt+" %s\n", code, reg.Description, val.Ieee32, reg.Units)
 			continue
 		}
 
-		switch reg.format {
+		switch reg.Format {
 		case "u16":
-			fmt.Printf(baseFmt+numFmt+" %s\n", code, reg.description, val.Unsigned16, reg.units)
+			fmt.Printf(baseFmt+numFmt+" %s\n", code, reg.Description, val.Unsigned16, reg.Units)
 		case "s16":
-			fmt.Printf(baseFmt+numFmt+"%s\n", code, reg.description, val.Signed16, reg.units)
+			fmt.Printf(baseFmt+numFmt+"%s\n", code, reg.Description, val.Signed16, reg.Units)
 		case "u32":
-			fmt.Printf(baseFmt+numFmt+"%s\n", code, reg.description, val.Unsigned32, reg.units)
+			fmt.Printf(baseFmt+numFmt+"%s\n", code, reg.Description, val.Unsigned32, reg.Units)
 		case "s32":
-			fmt.Printf(baseFmt+numFmt+"%s\n", code, reg.description, val.Signed32, reg.units)
+			fmt.Printf(baseFmt+numFmt+"%s\n", code, reg.Description, val.Signed32, reg.Units)
 		case "ieee32":
-			fmt.Printf(baseFmt+ieeeFmt+"%s\n", code, reg.description, val.Ieee32, reg.units)
+			fmt.Printf(baseFmt+ieeeFmt+"%s\n", code, reg.Description, val.Ieee32, reg.Units)
 		case "coil":
-			fmt.Printf(baseFmt+"%t\n", code, reg.description, val.Coil)
+			fmt.Printf(baseFmt+"%t\n", code, reg.Description, val.Coil)
 		}
 	}
 }
